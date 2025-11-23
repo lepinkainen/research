@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Generate blog posts from categorized HN comments.
-Creates markdown files with summaries and organized comments for each category.
+Generate blog posts from categorized HN comments using LLM analysis.
+Creates markdown files with AI-generated summaries and insights.
+Requires ANTHROPIC_API_KEY environment variable to be set.
 """
 
 import json
@@ -9,11 +10,17 @@ import os
 import re
 from datetime import datetime
 from typing import List, Dict
-from collections import Counter
 import sys
 
+try:
+    import anthropic
+except ImportError:
+    print("Error: anthropic package not found.")
+    print("Install it with: pip install anthropic")
+    sys.exit(1)
 
-class BlogPostGenerator:
+
+class LLMBlogPostGenerator:
     def __init__(self, categorized_file: str = 'blog/categorized_comments.json'):
         with open(categorized_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -28,6 +35,12 @@ class BlogPostGenerator:
 
         self.output_dir = 'blog/posts'
         os.makedirs(self.output_dir, exist_ok=True)
+
+        # Initialize Anthropic client
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+        self.client = anthropic.Anthropic(api_key=api_key)
 
     def _clean_text(self, text: str) -> str:
         """Clean and format comment text."""
@@ -47,116 +60,98 @@ class BlogPostGenerator:
 
         return text.strip()
 
-    def _extract_keywords(self, comments: List[Dict], top_n: int = 10) -> List[str]:
-        """Extract common keywords from comments."""
-        # Common words to ignore
-        stopwords = set([
-            'the', 'is', 'at', 'which', 'on', 'a', 'an', 'as', 'are', 'was', 'were',
-            'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
-            'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that',
-            'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what',
-            'who', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'both',
-            'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
-            'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'but',
-            'in', 'out', 'up', 'down', 'to', 'from', 'with', 'about', 'for', 'of',
-            'by', 'if', 'or', 'because', 'as', 'until', 'while', 'and', 'there',
-            'here', 'then', 'now', 'also', 'its', "it's", 'their', 'my', 'your'
-        ])
+    def _prepare_comments_for_llm(self, comments: List[Dict]) -> str:
+        """Prepare comments for LLM analysis."""
+        lines = []
+        for i, comment in enumerate(comments, 1):
+            text = self._clean_text(comment['text'])
+            lines.append(f"Comment {i}:")
+            if comment['story_title']:
+                lines.append(f"Discussion: {comment['story_title']}")
+            lines.append(f"Date: {comment['created_at'].strftime('%Y-%m-%d')}")
+            lines.append(f"HN URL: {comment['hn_url']}")
+            lines.append(f"Content: {text}")
+            lines.append("")
+        return "\n".join(lines)
 
-        # Collect all words
-        all_words = []
-        for comment in comments:
-            text = self._clean_text(comment['text']).lower()
-            words = re.findall(r'\b[a-z]{3,}\b', text)
-            all_words.extend([w for w in words if w not in stopwords])
+    def _generate_post_with_llm(self, category: str, comments: List[Dict]) -> str:
+        """Generate a blog post using Claude."""
+        print(f"  Generating blog post for '{category}' with Claude...")
 
-        # Count and return top keywords
-        counter = Counter(all_words)
-        return [word for word, count in counter.most_common(top_n)]
+        comments_text = self._prepare_comments_for_llm(comments)
 
-    def _generate_summary(self, category: str, comments: List[Dict]) -> str:
-        """Generate a summary for the category."""
-        # Get keywords
-        keywords = self._extract_keywords(comments, top_n=8)
+        prompt = f"""You are writing a blog post that summarizes and reflects on a collection of Hacker News comments.
 
-        # Get date range
-        dates = [c['created_at'] for c in comments]
-        date_range = f"{min(dates).strftime('%B %Y')} - {max(dates).strftime('%B %Y')}"
+Category: {category}
+Number of comments: {len(comments)}
 
-        # Get unique stories
-        stories = set(c['story_title'] for c in comments if c['story_title'])
+Here are the comments:
 
-        # Build summary
-        summary = f"A collection of {len(comments)} comments on {category.lower()} topics "
-        summary += f"from {date_range}. "
+{comments_text}
 
-        if stories:
-            summary += f"These discussions span {len(stories)} different threads, "
+Please write a thoughtful blog post that:
+1. Starts with a compelling introduction about the theme/category
+2. Identifies key patterns, insights, and perspectives from across the comments
+3. Groups related ideas and discusses the main threads of conversation
+4. Reflects on any interesting debates or differing viewpoints
+5. Provides your analysis and synthesis of the ideas
+6. Ends with concluding thoughts
 
-        if keywords:
-            summary += f"covering themes like {', '.join(keywords[:5])}, "
-            if len(keywords) > 5:
-                summary += f"and {', '.join(keywords[5:8])}."
-            else:
-                summary = summary.rstrip(', ') + '.'
+Format the output as markdown with:
+- A title (# heading)
+- Clear section headings (## for main sections)
+- Quote specific comments when relevant (using > blockquotes) with attribution like [Comment 3]
+- Links to the original HN discussions where relevant
+- A conversational, reflective tone
 
-        return summary
+The goal is to create a readable blog post that captures the essence of these comments and provides value beyond just listing them.
+Make it engaging and insightful, as if you're sharing your thoughts with readers about these interesting discussions.
 
-    def _generate_post(self, category: str, comments: List[Dict]) -> str:
-        """Generate a markdown blog post for a category."""
-        # Sort comments by date (newest first)
-        comments.sort(key=lambda x: x['created_at'], reverse=True)
+Write in first person ("I commented...") since this is a personal blog reflecting on the author's own HN comments.
+"""
 
-        # Generate summary
-        summary = self._generate_summary(category, comments)
+        try:
+            message = self.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=8192,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
 
-        # Start building the post
+            blog_post = message.content[0].text
+
+            # Add metadata at the top
+            metadata = f"*Generated on {datetime.now().strftime('%B %d, %Y')}*\n"
+            metadata += f"*{len(comments)} comments from {category}*\n\n"
+            metadata += "---\n\n"
+
+            return metadata + blog_post
+
+        except Exception as e:
+            print(f"  Error generating post with LLM: {e}")
+            print(f"  Falling back to simple format...")
+            return self._generate_post_simple(category, comments)
+
+    def _generate_post_simple(self, category: str, comments: List[Dict]) -> str:
+        """Fallback: Generate a simple formatted post without LLM."""
         lines = []
         lines.append(f"# {category}")
         lines.append("")
         lines.append(f"*Generated on {datetime.now().strftime('%B %d, %Y')}*")
         lines.append("")
-        lines.append("## Overview")
+        lines.append(f"## Overview")
         lines.append("")
-        lines.append(summary)
+        lines.append(f"A collection of {len(comments)} comments on {category.lower()} topics.")
         lines.append("")
-        lines.append(f"**Total Comments:** {len(comments)}")
-        lines.append("")
-
-        # Group by story
-        by_story = {}
-        for comment in comments:
-            story = comment['story_title'] or 'Unknown Thread'
-            if story not in by_story:
-                by_story[story] = []
-            by_story[story].append(comment)
-
-        # Add top stories section if we have story titles
-        if any(c['story_title'] for c in comments):
-            lines.append("## Top Discussions")
-            lines.append("")
-            story_counts = [(story, len(comms)) for story, comms in by_story.items()]
-            story_counts.sort(key=lambda x: x[1], reverse=True)
-
-            for story, count in story_counts[:5]:
-                lines.append(f"- **{story}** ({count} comment{'s' if count > 1 else ''})")
-
-            lines.append("")
-
-        # Add all comments section
         lines.append("## Comments")
         lines.append("")
 
         for i, comment in enumerate(comments, 1):
             text = self._clean_text(comment['text'])
-
-            # Limit very long comments
-            if len(text) > 1000:
-                text = text[:1000] + "..."
-
             lines.append(f"### Comment {i}")
             if comment['story_title']:
-                lines.append(f"**Story:** {comment['story_title']}")
+                lines.append(f"**Discussion:** {comment['story_title']}")
             lines.append(f"**Date:** {comment['created_at'].strftime('%B %d, %Y')}")
             lines.append(f"**Link:** {comment['hn_url']}")
             lines.append("")
@@ -173,7 +168,7 @@ class BlogPostGenerator:
         print("="*70)
 
         generated_files = []
-        self.filename_to_category = {}  # Track mapping for index generation
+        self.filename_to_category = {}
 
         for category, comments in self.categorized.items():
             if len(comments) < 2:
@@ -181,14 +176,14 @@ class BlogPostGenerator:
                 continue
 
             # Create filename
-            filename = category.lower().replace(' & ', '_').replace(' ', '_') + '.md'
+            filename = category.lower().replace(' & ', '_').replace(' ', '_').replace('/', '_') + '.md'
             filepath = os.path.join(self.output_dir, filename)
 
             # Store mapping
             self.filename_to_category[filename] = category
 
-            # Generate post
-            post_content = self._generate_post(category, comments)
+            # Generate post with LLM
+            post_content = self._generate_post_with_llm(category, comments)
 
             # Save to file
             with open(filepath, 'w', encoding='utf-8') as f:
@@ -206,6 +201,10 @@ class BlogPostGenerator:
         lines.append("")
         lines.append(f"*Generated on {datetime.now().strftime('%B %d, %Y')}*")
         lines.append("")
+        lines.append("A collection of blog posts synthesizing my Hacker News comment history,")
+        lines.append("organized by theme and written with AI assistance to identify patterns")
+        lines.append("and insights across discussions.")
+        lines.append("")
         lines.append("## Categories")
         lines.append("")
 
@@ -219,7 +218,8 @@ class BlogPostGenerator:
         lines.append("")
         lines.append("---")
         lines.append("")
-        lines.append("These posts are automatically generated from my Hacker News comment history.")
+        lines.append("*These posts are generated using AI analysis of my HN comment history.*")
+        lines.append("*The AI helps identify themes and synthesize ideas, but the underlying comments are all mine.*")
 
         index_path = os.path.join(self.output_dir, 'index.md')
         with open(index_path, 'w', encoding='utf-8') as f:
@@ -231,13 +231,13 @@ class BlogPostGenerator:
 
 def main():
     try:
-        generator = BlogPostGenerator()
+        generator = LLMBlogPostGenerator()
         generated_files = generator.generate_all_posts()
 
         if generated_files:
             generator.generate_index(generated_files)
             print("\n" + "="*70)
-            print(f"✅ Success! Generated {len(generated_files)} blog posts")
+            print(f"✅ Success! Generated {len(generated_files)} blog posts with LLM analysis")
             print(f"   Output directory: blog/posts/")
             print(f"   Index file: blog/posts/index.md")
         else:

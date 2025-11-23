@@ -1,23 +1,36 @@
 #!/usr/bin/env python3
 """
-Categorize and group HN comments by theme/topic using keyword analysis and AI-assisted categorization.
+Categorize and group HN comments by theme/topic using LLM analysis.
+Requires ANTHROPIC_API_KEY environment variable to be set.
 """
 
 import json
-import re
-from collections import defaultdict
+import os
 from datetime import datetime
-from typing import List, Dict, Set
+from typing import List, Dict
 import sys
 
+try:
+    import anthropic
+except ImportError:
+    print("Error: anthropic package not found.")
+    print("Install it with: pip install anthropic")
+    sys.exit(1)
 
-class CommentCategorizer:
+
+class LLMCommentCategorizer:
     def __init__(self, comments_file: str = 'blog/hn_comments.json'):
         with open(comments_file, 'r', encoding='utf-8') as f:
             self.raw_comments = json.load(f)
 
         # Normalize comments to standard format
         self.comments = self._normalize_comments(self.raw_comments)
+
+        # Initialize Anthropic client
+        api_key = os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+        self.client = anthropic.Anthropic(api_key=api_key)
 
     def _normalize_comments(self, comments: List[Dict]) -> List[Dict]:
         """Normalize different API formats to standard format."""
@@ -52,93 +65,121 @@ class CommentCategorizer:
 
         return normalized
 
-    def categorize(self) -> Dict[str, List[Dict]]:
-        """Categorize comments by analyzing keywords and topics."""
-        print(f"Categorizing {len(self.comments)} comments...")
+    def _prepare_comments_for_llm(self) -> str:
+        """Prepare comments in a format suitable for LLM analysis."""
+        lines = []
+        for i, comment in enumerate(self.comments, 1):
+            lines.append(f"Comment {i} (ID: {comment['id']}):")
+            if comment['story_title']:
+                lines.append(f"Story: {comment['story_title']}")
+            lines.append(f"Date: {comment['created_at'].strftime('%Y-%m-%d')}")
+            lines.append(f"Text: {comment['text'][:500]}")  # Limit length
+            lines.append("")
+        return "\n".join(lines)
 
-        # Define category keywords
+    def categorize(self) -> Dict[str, List[Dict]]:
+        """Categorize comments using LLM analysis."""
+        print(f"Analyzing {len(self.comments)} comments with Claude...")
+        print("This may take a moment...")
+
+        # Prepare prompt
+        comments_text = self._prepare_comments_for_llm()
+
+        prompt = f"""Analyze these Hacker News comments and group them into thematic categories.
+
+For each comment, identify its main topic/theme and assign it to an appropriate category.
+Create category names that are descriptive and meaningful.
+
+Comments:
+{comments_text}
+
+Please respond with a JSON object where:
+- Keys are category names (e.g., "AI & Machine Learning", "Software Development", etc.)
+- Values are arrays of comment IDs that belong to that category
+
+Example format:
+{{
+  "AI & Machine Learning": ["40123456", "40123789"],
+  "Software Architecture": ["40123567"],
+  ...
+}}
+
+Focus on creating 5-10 meaningful categories that capture the main themes.
+Each comment should be assigned to exactly one category that best represents its content.
+"""
+
+        try:
+            # Call Claude API
+            message = self.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4096,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+
+            # Parse response
+            response_text = message.content[0].text
+
+            # Extract JSON from response (handle markdown code blocks)
+            if "```json" in response_text:
+                response_text = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                response_text = response_text.split("```")[1].split("```")[0].strip()
+
+            category_mapping = json.loads(response_text)
+
+            # Build categorized dict
+            categorized = {}
+            comment_id_map = {c['id']: c for c in self.comments}
+
+            for category, comment_ids in category_mapping.items():
+                categorized[category] = []
+                for comment_id in comment_ids:
+                    if comment_id in comment_id_map:
+                        categorized[category].append(comment_id_map[comment_id])
+
+            # Print summary
+            print("\nCategorization Summary:")
+            print("="*70)
+            for category in sorted(categorized.keys()):
+                count = len(categorized[category])
+                print(f"  {category:40s}: {count:3d} comments")
+
+            return categorized
+
+        except Exception as e:
+            print(f"Error calling Claude API: {e}")
+            print("\nFalling back to keyword-based categorization...")
+            return self._fallback_categorize()
+
+    def _fallback_categorize(self) -> Dict[str, List[Dict]]:
+        """Fallback to simple keyword-based categorization."""
+        from collections import defaultdict
+
         category_keywords = {
-            'Programming & Development': [
-                'code', 'programming', 'developer', 'software', 'python', 'javascript',
-                'rust', 'go', 'java', 'algorithm', 'framework', 'library', 'api',
-                'github', 'git', 'function', 'class', 'bug', 'debug', 'refactor'
-            ],
-            'AI & Machine Learning': [
-                'ai', 'ml', 'machine learning', 'llm', 'gpt', 'chatgpt', 'claude',
-                'model', 'training', 'neural', 'transformer', 'openai', 'anthropic',
-                'deep learning', 'nlp', 'artificial intelligence'
-            ],
-            'Web & Frontend': [
-                'web', 'frontend', 'backend', 'react', 'vue', 'angular', 'css',
-                'html', 'dom', 'browser', 'javascript', 'typescript', 'node',
-                'webpack', 'ui', 'ux', 'responsive'
-            ],
-            'DevOps & Infrastructure': [
-                'docker', 'kubernetes', 'aws', 'cloud', 'deployment', 'ci/cd',
-                'infrastructure', 'server', 'database', 'postgres', 'mysql',
-                'redis', 'monitoring', 'scaling', 'devops', 'terraform'
-            ],
-            'Business & Startups': [
-                'startup', 'business', 'company', 'founder', 'revenue', 'product',
-                'market', 'customer', 'pricing', 'saas', 'sales', 'growth',
-                'funding', 'investor', 'entrepreneurship'
-            ],
-            'Privacy & Security': [
-                'privacy', 'security', 'encryption', 'vulnerability', 'hack',
-                'breach', 'password', 'authentication', 'oauth', 'ssl', 'tls',
-                'gdpr', 'tracking', 'anonymous', 'vpn'
-            ],
-            'Open Source': [
-                'open source', 'oss', 'license', 'mit', 'gpl', 'apache',
-                'contribution', 'maintainer', 'fork', 'pull request', 'community'
-            ],
-            'Career & Work': [
-                'job', 'career', 'interview', 'hiring', 'remote', 'work',
-                'salary', 'compensation', 'manager', 'team', 'culture',
-                'productivity', 'burnout', 'wfh'
-            ],
-            'Tools & Productivity': [
-                'tool', 'editor', 'vim', 'emacs', 'vscode', 'ide', 'terminal',
-                'cli', 'shell', 'bash', 'workflow', 'automation', 'productivity'
-            ],
-            'Gaming': [
-                'game', 'gaming', 'steam', 'playstation', 'xbox', 'nintendo',
-                'fps', 'rpg', 'indie', 'unity', 'unreal', 'graphics'
-            ],
+            'Programming & Development': ['code', 'programming', 'developer', 'software', 'python', 'rust', 'go'],
+            'AI & Machine Learning': ['ai', 'ml', 'llm', 'gpt', 'model', 'training'],
+            'Web Development': ['web', 'frontend', 'backend', 'react', 'javascript'],
+            'Other': []  # Default category
         }
 
-        # Categorize comments
         categorized = defaultdict(list)
-        uncategorized = []
 
         for comment in self.comments:
             text_lower = (comment['text'] + ' ' + comment['story_title']).lower()
+            matched = False
 
-            # Find matching categories
-            matches = []
             for category, keywords in category_keywords.items():
-                score = sum(1 for keyword in keywords if keyword in text_lower)
-                if score > 0:
-                    matches.append((category, score))
+                if category == 'Other':
+                    continue
+                if any(kw in text_lower for kw in keywords):
+                    categorized[category].append(comment)
+                    matched = True
+                    break
 
-            if matches:
-                # Assign to best matching category
-                matches.sort(key=lambda x: x[1], reverse=True)
-                best_category = matches[0][0]
-                categorized[best_category].append(comment)
-            else:
-                uncategorized.append(comment)
-
-        # Add uncategorized
-        if uncategorized:
-            categorized['Other'] = uncategorized
-
-        # Print summary
-        print("\nCategorization Summary:")
-        print("="*70)
-        for category in sorted(categorized.keys()):
-            count = len(categorized[category])
-            print(f"  {category:30s}: {count:3d} comments")
+            if not matched:
+                categorized['Other'].append(comment)
 
         return dict(categorized)
 
@@ -160,19 +201,21 @@ class CommentCategorizer:
 
 def main():
     try:
-        categorizer = CommentCategorizer()
+        categorizer = LLMCommentCategorizer()
         categorized = categorizer.categorize()
         categorizer.save_categorized(categorized)
 
-        print("\n✅ Success! Comments categorized.")
+        print("\n✅ Success! Comments categorized using LLM analysis.")
         print("Next step: Run 'python3 blog/generate_blog_posts.py' to create markdown posts")
 
     except FileNotFoundError:
         print("❌ Error: hn_comments.json not found.")
-        print("Please run download_hn_comments_v2.py first to fetch your comments.")
+        print("Please run download_hn_comments.py first to fetch your comments.")
         sys.exit(1)
     except Exception as e:
         print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
