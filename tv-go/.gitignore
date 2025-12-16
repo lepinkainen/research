@@ -1,0 +1,39 @@
+# Binaries
+tv-pocketbase
+tv-pocketbase-*
+dist/
+*.exe
+
+# PocketBase data
+pb_data/
+pb_public/
+
+# Go
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Backups
+*.zip
+backups/
