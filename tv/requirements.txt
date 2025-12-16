@@ -1,0 +1,11 @@
+# Requirements for TV Program Data Collector
+
+# HTTP requests
+requests>=2.31.0
+
+# No other dependencies needed - using Python stdlib for:
+# - sqlite3 (built-in)
+# - datetime (built-in)
+# - json (built-in)
+# - logging (built-in)
+# - pathlib (built-in)
