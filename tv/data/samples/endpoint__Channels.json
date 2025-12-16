@@ -1,0 +1,332 @@
+[
+  {
+    "id": 114,
+    "name": "V Film Hits",
+    "showOrder": 7220
+  },
+  {
+    "id": 12,
+    "name": "TLC",
+    "showOrder": 5800
+  },
+  {
+    "id": 51,
+    "name": "CNBC",
+    "showOrder": 8100
+  },
+  {
+    "id": 4,
+    "name": "Nelonen",
+    "showOrder": 4
+  },
+  {
+    "id": 119,
+    "name": "NickJr",
+    "showOrder": 4710
+  },
+  {
+    "id": 47,
+    "name": "National Geographic",
+    "showOrder": 6000
+  },
+  {
+    "id": 65,
+    "name": "TV7",
+    "showOrder": 3300
+  },
+  {
+    "id": 46,
+    "name": "Disney Channel",
+    "showOrder": 4800
+  },
+  {
+    "id": 88,
+    "name": "TV Viisi",
+    "showOrder": 10
+  },
+  {
+    "id": 107,
+    "name": "Al Jazeera",
+    "showOrder": 8400
+  },
+  {
+    "id": 3,
+    "name": "MTV3",
+    "showOrder": 3
+  },
+  {
+    "id": 5,
+    "name": "SubTV",
+    "showOrder": 5
+  },
+  {
+    "id": 41,
+    "name": "Travel",
+    "showOrder": 5900
+  },
+  {
+    "id": 29,
+    "name": "Deutsche Welle",
+    "showOrder": 8000
+  },
+  {
+    "id": 2,
+    "name": "Yle TV2",
+    "showOrder": 2
+  },
+  {
+    "id": 30,
+    "name": "MTV Max",
+    "showOrder": 1300
+  },
+  {
+    "id": 64,
+    "name": "Kutonen",
+    "showOrder": 100
+  },
+  {
+    "id": 35,
+    "name": "V Film Action",
+    "showOrder": 7000
+  },
+  {
+    "id": 18,
+    "name": "C More Hits",
+    "showOrder": 7305
+  },
+  {
+    "id": 84,
+    "name": "Viasat History",
+    "showOrder": 6300
+  },
+  {
+    "id": 60,
+    "name": "Ava",
+    "showOrder": 200
+  },
+  {
+    "id": 63,
+    "name": "Liv",
+    "showOrder": 9
+  },
+  {
+    "id": 13,
+    "name": "Yle Teema & Fem",
+    "showOrder": 6
+  },
+  {
+    "id": 82,
+    "name": "Viasat Explore",
+    "showOrder": 6200
+  },
+  {
+    "id": 50,
+    "name": "Eurosport 2",
+    "showOrder": 3800
+  },
+  {
+    "id": 74,
+    "name": "MTV Juniori",
+    "showOrder": 1600
+  },
+  {
+    "id": 26,
+    "name": "TV4",
+    "showOrder": 3000
+  },
+  {
+    "id": 57,
+    "name": "MTV Viihde",
+    "showOrder": 7302
+  },
+  {
+    "id": 56,
+    "name": "JIM",
+    "showOrder": 8
+  },
+  {
+    "id": 22,
+    "name": "TV Finland",
+    "showOrder": 2900
+  },
+  {
+    "id": 120,
+    "name": "NatGeo Wild",
+    "showOrder": 6010
+  },
+  {
+    "id": 33,
+    "name": "V Film Premiere",
+    "showOrder": 6800
+  },
+  {
+    "id": 103,
+    "name": "Hero",
+    "showOrder": 1100
+  },
+  {
+    "id": 66,
+    "name": "BBC Earth",
+    "showOrder": 5300
+  },
+  {
+    "id": 36,
+    "name": "V Film Family",
+    "showOrder": 7100
+  },
+  {
+    "id": 9,
+    "name": "Animal Planet",
+    "showOrder": 5500
+  },
+  {
+    "id": 49,
+    "name": "Eurosport 1",
+    "showOrder": 3700
+  },
+  {
+    "id": 104,
+    "name": "Frii",
+    "showOrder": 1200
+  },
+  {
+    "id": 83,
+    "name": "V Sport Golf",
+    "showOrder": 4000
+  },
+  {
+    "id": 27,
+    "name": "Sjuan",
+    "showOrder": 3100
+  },
+  {
+    "id": 116,
+    "name": "SF Kanalen",
+    "showOrder": 1890
+  },
+  {
+    "id": 122,
+    "name": "C More Stars",
+    "showOrder": 7303
+  },
+  {
+    "id": 32,
+    "name": "MTV Finland",
+    "showOrder": 2400
+  },
+  {
+    "id": 133,
+    "name": "Eveo",
+    "showOrder": 1300
+  },
+  {
+    "id": 6,
+    "name": "Discovery Channel",
+    "showOrder": 5400
+  },
+  {
+    "id": 128,
+    "name": "Club MTV",
+    "showOrder": 2405
+  },
+  {
+    "id": 129,
+    "name": "MTV Live HD",
+    "showOrder": 2406
+  },
+  {
+    "id": 118,
+    "name": "Disney Junior",
+    "showOrder": 4950
+  },
+  {
+    "id": 99,
+    "name": "RTL",
+    "showOrder": 8300
+  },
+  {
+    "id": 52,
+    "name": "CNN",
+    "showOrder": 8200
+  },
+  {
+    "id": 113,
+    "name": "V Sport Football",
+    "showOrder": 4230
+  },
+  {
+    "id": 1,
+    "name": "Yle TV1",
+    "showOrder": 1
+  },
+  {
+    "id": 17,
+    "name": "MTV Aitio",
+    "showOrder": 7304
+  },
+  {
+    "id": 105,
+    "name": "MTV Urheilu 1",
+    "showOrder": 2100
+  },
+  {
+    "id": 106,
+    "name": "MTV Urheilu 2",
+    "showOrder": 2101
+  },
+  {
+    "id": 130,
+    "name": "ETV",
+    "showOrder": 1990
+  },
+  {
+    "id": 132,
+    "name": "BBC Nordic",
+    "showOrder": 5400
+  },
+  {
+    "id": 123,
+    "name": "Star Channel",
+    "showOrder": 1250
+  },
+  {
+    "id": 68,
+    "name": "Cartoon Network",
+    "showOrder": 4500
+  },
+  {
+    "id": 124,
+    "name": "MTV 80s",
+    "showOrder": 2401
+  },
+  {
+    "id": 125,
+    "name": "MTV 90s",
+    "showOrder": 2402
+  },
+  {
+    "id": 86,
+    "name": "V Sport 1",
+    "showOrder": 4100
+  },
+  {
+    "id": 126,
+    "name": "MTV 00s",
+    "showOrder": 2403
+  },
+  {
+    "id": 131,
+    "name": "RTL 2",
+    "showOrder": 8350
+  },
+  {
+    "id": 90,
+    "name": "History",
+    "showOrder": 6600
+  },
+  {
+    "id": 127,
+    "name": "MTV Hits",
+    "showOrder": 2404
+  }
+]

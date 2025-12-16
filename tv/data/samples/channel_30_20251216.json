@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Kolmosvaihde",
+    "episode": "",
+    "description": "Vieraana on maailman paras tenniksen nelinpelaaja. .Autoasioissa Harri Heliövaara luottaa Lexus-merkkiin. Tutustuimme liikkuvan latauksen maailmaan ja tapasimme Polestarin suunnittelijan Heidi Ylä-Suvannon. S06E10",
+    "start": 29430510,
+    "stop": 29430660,
+    "series_id": 15523,
+    "id": 77721025,
+    "agelimit": 0,
+    "channel": 30,
+    "rating": 0
+  },
+  {
+    "name": "MTV Uutiset Live",
+    "episode": "",
+    "description": "Kausi 2025, jakso 698/732. Tärkeimmät uutiset ja kiinnostavimmat puheenaiheet - aina!",
+    "start": 29430660,
+    "stop": 29430960,
+    "series_id": 13,
+    "id": 77721026,
+    "agelimit": 0,
+    "channel": 30,
+    "rating": 34
+  },
+  {
+    "name": "MTV Uutiset Live",
+    "episode": "",
+    "description": "Kausi 2025, jakso 700/732. Tärkeimmät uutiset ja kiinnostavimmat puheenaiheet - aina!",
+    "start": 29432100,
+    "stop": 29432400,
+    "series_id": 13,
+    "id": 77725025,
+    "agelimit": 0,
+    "channel": 30,
+    "rating": 34
+  }
+]
