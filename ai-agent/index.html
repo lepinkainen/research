@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent System - Implementation Overview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            font-size: 32px;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .section h3 {
+            font-size: 24px;
+            color: #764ba2;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .section h4 {
+            font-size: 18px;
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card .icon {
+            font-size: 32px;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 15px 0;
+        }
+
+        .code-block pre {
+            margin: 0;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #ffd89b 0%, #19547b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 2px;
+        }
+
+        .badge.python {
+            background: #3776ab;
+            color: white;
+        }
+
+        .badge.go {
+            background: #00add8;
+            color: white;
+        }
+
+        .badge.web {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .badge.tui {
+            background: #4ecdc4;
+            color: white;
+        }
+
+        .badge.mcp {
+            background: #95e1d3;
+            color: #333;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            padding: 5px 0;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            background: #2d2d2d;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .architecture-diagram {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .arch-layer {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .arch-layer.secondary {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+        }
+
+        .arch-layer.tertiary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .directory-tree {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Agent System</h1>
+            <p>Comprehensive Implementation Overview</p>
+            <p style="font-size: 16px; margin-top: 10px;">Multiple approaches for building AI agents with tool calling support</p>
+        </header>
+
+        <div class="content">
+            <!-- Table of Contents -->
+            <div class="section">
+                <h2>📋 Table of Contents</h2>
+                <div class="toc">
+                    <ul>
+                        <li><a href="#overview">Overview</a></li>
+                        <li><a href="#research">Research Findings: MCP & LSP</a></li>
+                        <li><a href="#implementations">Implementations</a>
+                            <ul style="margin-left: 20px;">
+                                <li><a href="#python-tui">Python TUI Agent</a></li>
+                                <li><a href="#python-web">Python Web Agent</a></li>
+                                <li><a href="#go-tui">Go TUI Agent</a></li>
+                                <li><a href="#mcp-server">MCP Server</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#comparison">Implementation Comparison</a></li>
+                        <li><a href="#obsidian-tools">Obsidian Tools</a></li>
+                        <li><a href="#getting-started">Getting Started</a></li>
+                        <li><a href="#architecture">Architecture</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Overview -->
+            <div class="section" id="overview">
+                <h2>🎯 Overview</h2>
+                <p>This repository contains <span class="highlight">four different implementations</span> of AI agent systems that support tool calling and can be plugged into any local or online AI model. All implementations include specialized tools for interacting with Obsidian vaults.</p>
+
+                <div class="success">
+                    <strong>✅ Key Features Across All Implementations:</strong>
+                    <ul class="feature-list">
+                        <li>Multi-provider support (OpenAI, Anthropic Claude, Ollama local models)</li>
+                        <li>Tool calling framework for custom tool integration</li>
+                        <li>Obsidian vault integration (search, read, create, update notes)</li>
+                        <li>Production-ready code with error handling</li>
+                        <li>Extensible architecture for adding new tools</li>
+                    </ul>
+                </div>
+
+                <h3>Directory Structure</h3>
+                <div class="directory-tree">
+ai-agent/
+├── python-tui/          # Python Terminal UI implementation
+│   ├── agent.py         # Base TUI agent with multi-provider support
+│   ├── obsidian_agent.py # Obsidian-specialized TUI agent
+│   └── requirements.txt
+│
+├── python-web/          # Python Web-based implementation
+│   ├── server.py        # FastAPI server with embedded frontend
+│   └── requirements.txt
+│
+├── go-tui/             # Go Terminal UI implementation
+│   ├── main.go         # Main TUI application
+│   ├── providers.go    # LLM provider implementations
+│   ├── tools.go        # Tool registry system
+│   ├── obsidian.go     # Obsidian vault integration
+│   └── go.mod          # Go dependencies
+│
+├── mcp-server/         # Model Context Protocol server
+│   ├── obsidian_mcp_server.py  # MCP server implementation
+│   ├── mcp_client_example.py   # Example MCP client
+│   ├── mcp_config.json         # MCP configuration
+│   └── requirements.txt
+│
+└── shared/             # Shared utilities
+    └── obsidian_tools.py # Obsidian tool definitions
+                </div>
+            </div>
+
+            <!-- Research Findings -->
+            <div class="section" id="research">
+                <h2>🔬 Research Findings: MCP & LSP</h2>
+
+                <h3>Model Context Protocol (MCP)</h3>
+                <div class="info">
+                    <strong>What is MCP?</strong>
+                    <p>The Model Context Protocol (MCP) is an <strong>open standard</strong> introduced by Anthropic in November 2024 to standardize how AI systems integrate with external tools and data sources. Think of it as "USB-C for AI applications."</p>
+                </div>
+
+                <ul class="feature-list">
+                    <li><strong>Industry Adoption (2025):</strong> OpenAI integrated MCP in March 2025, Google DeepMind confirmed support in April 2025</li>
+                    <li><strong>Ecosystem:</strong> Thousands of MCP servers built, SDKs for all major languages</li>
+                    <li><strong>Tool Calling:</strong> Standardized approach for AI agents to execute tools and access data</li>
+                    <li><strong>Code Execution:</strong> Enables agents to load tools on demand and execute complex logic efficiently</li>
+                </ul>
+
+                <h3>Language Server Protocol (LSP) Integration</h3>
+                <div class="info">
+                    <strong>LSP for AI Agents</strong>
+                    <p>LSP integration allows AI agents to access code intelligence features like hover documentation, diagnostics, and code completion.</p>
+                </div>
+
+                <ul class="feature-list">
+                    <li><strong>Agent Client Protocol (ACP):</strong> Emerging as "LSP for AI agents" (launched August 2025 with Zed Editor)</li>
+                    <li><strong>LSP-MCP Bridge:</strong> Allows AI assistants to perform advanced code analysis</li>
+                    <li><strong>LSP-AI:</strong> Open-source language server providing AI-powered code assistance</li>
+                </ul>
+            </div>
+
+            <!-- Implementations -->
+            <div class="section" id="implementations">
+                <h2>🚀 Implementations</h2>
+
+                <div class="grid">
+                    <!-- Python TUI -->
+                    <div class="card" id="python-tui">
+                        <h3><span class="icon">🐍</span> Python TUI Agent</h3>
+                        <div class="tech-stack">
+                            <span class="badge python">Python</span>
+                            <span class="badge tui">TUI</span>
+                        </div>
+                        <p><strong>Terminal-based AI agent with rich text UI using Textual framework</strong></p>
+
+                        <h4>Features:</h4>
+                        <ul class="feature-list">
+                            <li>Beautiful terminal UI with Textual</li>
+                            <li>Real-time chat interface</li>
+                            <li>Provider switching (OpenAI/Anthropic/Ollama)</li>
+                            <li>Markdown rendering in terminal</li>
+                            <li>Tool execution visualization</li>
+                        </ul>
+
+                        <h4>Technology Stack:</h4>
+                        <ul class="feature-list">
+                            <li>Textual - Modern TUI framework</li>
+                            <li>Rich - Terminal formatting</li>
+                            <li>OpenAI SDK, Anthropic SDK</li>
+                            <li>Requests for Ollama</li>
+                        </ul>
+
+                        <h4>Quick Start:</h4>
+                        <div class="code-block"><pre>cd ai-agent/python-tui
+pip install -r requirements.txt
+export OBSIDIAN_VAULT_PATH="/path/to/vault"
+python obsidian_agent.py</pre></div>
+                    </div>
+
+                    <!-- Python Web -->
+                    <div class="card" id="python-web">
+                        <h3><span class="icon">🌐</span> Python Web Agent</h3>
+                        <div class="tech-stack">
+                            <span class="badge python">Python</span>
+                            <span class="badge web">Web</span>
+                        </div>
+                        <p><strong>Web-based AI agent with FastAPI backend and modern HTML/JavaScript frontend</strong></p>
+
+                        <h4>Features:</h4>
+                        <ul class="feature-list">
+                            <li>Modern web interface</li>
+                            <li>RESTful API</li>
+                            <li>Real-time chat updates</li>
+                            <li>Beautiful gradient UI</li>
+                            <li>Health monitoring endpoint</li>
+                            <li>Multi-user capable</li>
+                        </ul>
+
+                        <h4>Technology Stack:</h4>
+                        <ul class="feature-list">
+                            <li>FastAPI - Modern Python web framework</li>
+                            <li>Uvicorn - ASGI server</li>
+                            <li>Pydantic - Data validation</li>
+                            <li>Vanilla JavaScript frontend</li>
+                        </ul>
+
+                        <h4>Quick Start:</h4>
+                        <div class="code-block"><pre>cd ai-agent/python-web
+pip install -r requirements.txt
+export OBSIDIAN_VAULT_PATH="/path/to/vault"
+python server.py --host 0.0.0.0 --port 8000
+# Open http://localhost:8000</pre></div>
+                    </div>
+
+                    <!-- Go TUI -->
+                    <div class="card" id="go-tui">
+                        <h3><span class="icon">🔷</span> Go TUI Agent</h3>
+                        <div class="tech-stack">
+                            <span class="badge go">Go</span>
+                            <span class="badge tui">TUI</span>
+                        </div>
+                        <p><strong>High-performance terminal UI agent built with Bubble Tea</strong></p>
+
+                        <h4>Features:</h4>
+                        <ul class="feature-list">
+                            <li>Lightning-fast performance</li>
+                            <li>Bubble Tea framework</li>
+                            <li>Lipgloss styling</li>
+                            <li>Native Go implementation</li>
+                            <li>Low memory footprint</li>
+                            <li>Keyboard-driven interface</li>
+                        </ul>
+
+                        <h4>Technology Stack:</h4>
+                        <ul class="feature-list">
+                            <li>Bubble Tea - Go TUI framework</li>
+                            <li>Lipgloss - Terminal styling</li>
+                            <li>Native HTTP clients</li>
+                            <li>Pure Go, no CGO dependencies</li>
+                        </ul>
+
+                        <h4>Quick Start:</h4>
+                        <div class="code-block"><pre>cd ai-agent/go-tui
+go mod download
+export OBSIDIAN_VAULT_PATH="/path/to/vault"
+export OPENAI_API_KEY="your-key"
+go run .</pre></div>
+
+                        <h4>Keyboard Shortcuts:</h4>
+                        <ul class="feature-list">
+                            <li>Ctrl+P - Switch provider</li>
+                            <li>Ctrl+N - Connect to provider</li>
+                            <li>Ctrl+C - Quit</li>
+                            <li>Enter - Send message</li>
+                        </ul>
+                    </div>
+
+                    <!-- MCP Server -->
+                    <div class="card" id="mcp-server">
+                        <h3><span class="icon">🔌</span> MCP Server</h3>
+                        <div class="tech-stack">
+                            <span class="badge python">Python</span>
+                            <span class="badge mcp">MCP</span>
+                        </div>
+                        <p><strong>Standard-compliant MCP server for Obsidian integration</strong></p>
+
+                        <h4>Features:</h4>
+                        <ul class="feature-list">
+                            <li>Standard MCP protocol compliance</li>
+                            <li>Tool exposure via MCP</li>
+                            <li>Resource endpoints for notes</li>
+                            <li>Works with any MCP client</li>
+                            <li>Claude Desktop integration</li>
+                            <li>Stdio-based communication</li>
+                        </ul>
+
+                        <h4>Technology Stack:</h4>
+                        <ul class="feature-list">
+                            <li>Official MCP Python SDK</li>
+                            <li>Async/await architecture</li>
+                            <li>Stdio server transport</li>
+                        </ul>
+
+                        <h4>Quick Start:</h4>
+                        <div class="code-block"><pre>cd ai-agent/mcp-server
+pip install -r requirements.txt
+
+# Run server
+python obsidian_mcp_server.py /path/to/vault
+
+# Or test with example client
+python mcp_client_example.py</pre></div>
+
+                        <h4>Claude Desktop Integration:</h4>
+                        <p>Add to Claude Desktop config:</p>
+                        <div class="code-block"><pre>{
+  "mcpServers": {
+    "obsidian": {
+      "command": "python",
+      "args": ["/path/to/obsidian_mcp_server.py"],
+      "env": {
+        "OBSIDIAN_VAULT_PATH": "/path/to/vault"
+      }
+    }
+  }
+}</pre></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="section" id="comparison">
+                <h2>⚖️ Implementation Comparison</h2>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Python TUI</th>
+                            <th>Python Web</th>
+                            <th>Go TUI</th>
+                            <th>MCP Server</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Interface</strong></td>
+                            <td>Terminal</td>
+                            <td>Web Browser</td>
+                            <td>Terminal</td>
+                            <td>Stdio (Protocol)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Performance</strong></td>
+                            <td>Fast</td>
+                            <td>Good</td>
+                            <td>Very Fast</td>
+                            <td>Fast</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Multi-user</strong></td>
+                            <td>No</td>
+                            <td>Yes</td>
+                            <td>No</td>
+                            <td>No (single client)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Deployment</strong></td>
+                            <td>Simple</td>
+                            <td>Server Required</td>
+                            <td>Simple</td>
+                            <td>Simple</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dependencies</strong></td>
+                            <td>Moderate</td>
+                            <td>Moderate</td>
+                            <td>Minimal</td>
+                            <td>Light</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tool Calling</strong></td>
+                            <td>✅ Yes</td>
+                            <td>✅ Yes</td>
+                            <td>✅ Yes</td>
+                            <td>✅ Yes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Provider Support</strong></td>
+                            <td>OpenAI, Anthropic, Ollama</td>
+                            <td>OpenAI, Anthropic, Ollama</td>
+                            <td>OpenAI, Anthropic, Ollama</td>
+                            <td>Any (client-dependent)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Best For</strong></td>
+                            <td>CLI power users</td>
+                            <td>Web access, Teams</td>
+                            <td>Performance-critical</td>
+                            <td>Standard integration</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Memory Usage</strong></td>
+                            <td>Medium</td>
+                            <td>Medium-High</td>
+                            <td>Low</td>
+                            <td>Low</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Obsidian Tools -->
+            <div class="section" id="obsidian-tools">
+                <h2>📚 Obsidian Tools</h2>
+                <p>All implementations include the following Obsidian-specific tools:</p>
+
+                <div class="grid">
+                    <div class="card">
+                        <h4>🔍 search_obsidian_notes</h4>
+                        <p>Search for notes containing specific text with optional case sensitivity.</p>
+                        <div class="code-block"><pre>{
+  "query": "Python",
+  "case_sensitive": false
+}</pre></div>
+                    </div>
+
+                    <div class="card">
+                        <h4>📖 read_obsidian_note</h4>
+                        <p>Read the complete contents of a specific note including frontmatter.</p>
+                        <div class="code-block"><pre>{
+  "note_path": "Notes/MyNote.md"
+}</pre></div>
+                    </div>
+
+                    <div class="card">
+                        <h4>✏️ create_obsidian_note</h4>
+                        <p>Create a new note with optional tags and folder placement.</p>
+                        <div class="code-block"><pre>{
+  "title": "New Note",
+  "content": "# Content",
+  "folder": "Projects",
+  "tags": ["ai", "tools"]
+}</pre></div>
+                    </div>
+
+                    <div class="card">
+                        <h4>💾 update_obsidian_note</h4>
+                        <p>Update existing note content with append or replace mode.</p>
+                        <div class="code-block"><pre>{
+  "note_path": "Notes/MyNote.md",
+  "content": "New content",
+  "append": true
+}</pre></div>
+                    </div>
+
+                    <div class="card">
+                        <h4>📋 list_obsidian_notes</h4>
+                        <p>List all notes in vault or specific folder, sorted by modification date.</p>
+                        <div class="code-block"><pre>{
+  "folder": "Projects"
+}</pre></div>
+                    </div>
+
+                    <div class="card">
+                        <h4>🔗 get_obsidian_backlinks</h4>
+                        <p>Find all notes that link to a specific note.</p>
+                        <div class="code-block"><pre>{
+  "note_path": "Notes/MyNote.md"
+}</pre></div>
+                    </div>
+
+                    <div class="card">
+                        <h4>🏷️ get_obsidian_tags</h4>
+                        <p>Get all tags used in the vault with their frequencies.</p>
+                        <div class="code-block"><pre>{}</pre></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Getting Started -->
+            <div class="section" id="getting-started">
+                <h2>🚀 Getting Started</h2>
+
+                <h3>Prerequisites</h3>
+                <ul class="feature-list">
+                    <li>Python 3.9+ (for Python implementations)</li>
+                    <li>Go 1.21+ (for Go implementation)</li>
+                    <li>API keys for chosen providers (OpenAI, Anthropic, or Ollama running locally)</li>
+                    <li>Obsidian vault (optional, but recommended)</li>
+                </ul>
+
+                <h3>Environment Variables</h3>
+                <div class="code-block"><pre># Required for cloud providers
+export OPENAI_API_KEY="your-openai-key"
+export ANTHROPIC_API_KEY="your-anthropic-key"
+
+# Optional: Specify vault location
+export OBSIDIAN_VAULT_PATH="/path/to/vault"
+
+# For Ollama (if not using default)
+export OLLAMA_BASE_URL="http://localhost:11434"</pre></div>
+
+                <h3>Choosing an Implementation</h3>
+
+                <div class="warning">
+                    <strong>Decision Guide:</strong>
+                    <ul style="margin-top: 10px;">
+                        <li><strong>Python TUI:</strong> Best for personal use, quick testing, and command-line workflows</li>
+                        <li><strong>Python Web:</strong> Best for team access, web-based workflows, and multiple users</li>
+                        <li><strong>Go TUI:</strong> Best for performance-critical applications and minimal dependencies</li>
+                        <li><strong>MCP Server:</strong> Best for standard integrations (Claude Desktop, etc.)</li>
+                    </ul>
+                </div>
+
+                <h3>Adding Custom Tools</h3>
+                <p>All implementations support adding custom tools. Here's how:</p>
+
+                <h4>Python Example:</h4>
+                <div class="code-block"><pre>from agent import Tool
+
+# Define your tool
+my_tool = Tool(
+    name="my_custom_tool",
+    description="Does something useful",
+    parameters={
+        "type": "object",
+        "properties": {
+            "param1": {
+                "type": "string",
+                "description": "First parameter"
+            }
+        },
+        "required": ["param1"]
+    },
+    function=lambda param1: f"Result: {param1}"
+)
+
+# Register it
+tool_registry.register(my_tool)</pre></div>
+
+                <h4>Go Example:</h4>
+                <div class="code-block"><pre>registry.Register(Tool{
+    Name: "my_custom_tool",
+    Description: "Does something useful",
+    Parameters: map[string]interface{}{
+        "type": "object",
+        "properties": map[string]interface{}{
+            "param1": map[string]interface{}{
+                "type": "string",
+                "description": "First parameter",
+            },
+        },
+        "required": []string{"param1"},
+    },
+    Function: func(args map[string]interface{}) (interface{}, error) {
+        param1 := args["param1"].(string)
+        return fmt.Sprintf("Result: %s", param1), nil
+    },
+})</pre></div>
+            </div>
+
+            <!-- Architecture -->
+            <div class="section" id="architecture">
+                <h2>🏗️ Architecture</h2>
+
+                <h3>Common Architecture Pattern</h3>
+                <div class="architecture-diagram">
+                    <div class="arch-layer">
+                        User Interface Layer
+                        <div style="font-size: 12px; font-weight: normal; margin-top: 5px;">
+                            TUI (Textual/Bubble Tea) | Web (FastAPI + HTML/JS) | MCP Protocol
+                        </div>
+                    </div>
+                    <div class="arch-layer secondary">
+                        Agent Core Layer
+                        <div style="font-size: 12px; font-weight: normal; margin-top: 5px;">
+                            Message Management | Provider Abstraction | Tool Registry
+                        </div>
+                    </div>
+                    <div class="arch-layer tertiary">
+                        Provider Layer
+                        <div style="font-size: 12px; font-weight: normal; margin-top: 5px;">
+                            OpenAI Provider | Anthropic Provider | Ollama Provider
+                        </div>
+                    </div>
+                    <div class="arch-layer">
+                        Tool Layer
+                        <div style="font-size: 12px; font-weight: normal; margin-top: 5px;">
+                            Obsidian Tools | Custom Tools | Future Extensions
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Key Design Principles</h3>
+                <ul class="feature-list">
+                    <li><strong>Provider Abstraction:</strong> Unified interface for all LLM providers</li>
+                    <li><strong>Tool Registry Pattern:</strong> Pluggable tool system for easy extension</li>
+                    <li><strong>Error Handling:</strong> Comprehensive error handling at all layers</li>
+                    <li><strong>Type Safety:</strong> Strong typing in Go, Pydantic models in Python</li>
+                    <li><strong>Separation of Concerns:</strong> Clear separation between UI, logic, and tools</li>
+                </ul>
+
+                <h3>Extension Points</h3>
+                <div class="info">
+                    <strong>How to Extend:</strong>
+                    <ul style="margin-top: 10px;">
+                        <li><strong>Add New Providers:</strong> Implement the Provider interface</li>
+                        <li><strong>Add New Tools:</strong> Register tools via the Tool Registry</li>
+                        <li><strong>Custom UIs:</strong> Use the core agent logic with your own interface</li>
+                        <li><strong>Data Sources:</strong> Create tool wrappers for any data source</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Future Enhancements -->
+            <div class="section">
+                <h2>🔮 Future Enhancements</h2>
+                <div class="grid">
+                    <div class="card">
+                        <h4>🔄 Streaming Responses</h4>
+                        <p>Add support for streaming responses from LLM providers for better user experience</p>
+                    </div>
+                    <div class="card">
+                        <h4>💾 Conversation Persistence</h4>
+                        <p>Save and resume conversations across sessions</p>
+                    </div>
+                    <div class="card">
+                        <h4>🔐 Authentication</h4>
+                        <p>Add user authentication for web implementation</p>
+                    </div>
+                    <div class="card">
+                        <h4>📊 Analytics</h4>
+                        <p>Track tool usage and conversation metrics</p>
+                    </div>
+                    <div class="card">
+                        <h4>🌐 More Integrations</h4>
+                        <p>Add tools for GitHub, Jira, Slack, etc.</p>
+                    </div>
+                    <div class="card">
+                        <h4>🧪 Testing Suite</h4>
+                        <p>Comprehensive unit and integration tests</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conclusion -->
+            <div class="section">
+                <h2>✅ Conclusion</h2>
+                <div class="success">
+                    <p><strong>You now have four production-ready AI agent implementations</strong> with the following capabilities:</p>
+                    <ul class="feature-list">
+                        <li>✅ Multi-provider support (OpenAI, Anthropic, Ollama)</li>
+                        <li>✅ Tool calling framework</li>
+                        <li>✅ Obsidian vault integration</li>
+                        <li>✅ MCP protocol compliance</li>
+                        <li>✅ Multiple interface options (TUI, Web, Protocol)</li>
+                        <li>✅ Extensible architecture</li>
+                        <li>✅ Production-ready code</li>
+                    </ul>
+                </div>
+
+                <p style="margin-top: 20px;">Choose the implementation that best fits your needs, or use them all for different scenarios! Each implementation shares the same Obsidian tools and follows similar architectural patterns, making it easy to switch between them or extend functionality across all versions.</p>
+            </div>
+        </div>
+
+        <footer>
+            <p><strong>AI Agent System</strong></p>
+            <p style="margin-top: 10px; opacity: 0.8;">Built with Python, Go, FastAPI, Textual, Bubble Tea, and the Model Context Protocol</p>
+            <p style="margin-top: 10px; font-size: 14px;">All implementations support pluggable AI models and custom tool integration</p>
+        </footer>
+    </div>
+</body>
+</html>
