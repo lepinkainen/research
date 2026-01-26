@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R-junat - Järvenpää & Helsinki</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #16213e;
+            padding: 1rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .r-badge {
+            background: #4ade80;
+            color: #1a1a2e;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .last-update {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 0.25rem;
+        }
+
+        main {
+            padding: 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .station-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .station-header {
+            background: #0f3460;
+            padding: 0.75rem 1rem;
+            border-radius: 8px 8px 0 0;
+            font-weight: 600;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .station-header .direction {
+            font-size: 0.8rem;
+            color: #aaa;
+            font-weight: 400;
+        }
+
+        .train-list {
+            background: #16213e;
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+        }
+
+        .train-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 80px 50px;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #1a1a2e;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .train-row:last-child {
+            border-bottom: none;
+        }
+
+        .train-time {
+            font-size: 1.25rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .train-destination {
+            font-size: 0.95rem;
+        }
+
+        .train-status {
+            text-align: right;
+            font-size: 0.85rem;
+        }
+
+        .train-track {
+            text-align: center;
+            background: #0f3460;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .on-time {
+            color: #4ade80;
+        }
+
+        .delayed {
+            color: #f87171;
+        }
+
+        .cancelled {
+            color: #f87171;
+            text-decoration: line-through;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #888;
+        }
+
+        .error {
+            background: #7f1d1d;
+            color: #fecaca;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .empty {
+            padding: 1.5rem;
+            text-align: center;
+            color: #888;
+        }
+
+        /* Tablet and desktop */
+        @media (min-width: 600px) {
+            main {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1rem;
+                padding: 1.5rem;
+            }
+
+            .station-section {
+                margin-bottom: 0;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .train-row {
+                grid-template-columns: 70px 1fr 90px 50px;
+            }
+        }
+
+        .refresh-btn {
+            background: transparent;
+            border: 1px solid #4ade80;
+            color: #4ade80;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 1rem;
+        }
+
+        .refresh-btn:hover {
+            background: #4ade80;
+            color: #1a1a2e;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            <span class="r-badge">R</span>
+            Lähtevät junat
+            <button class="refresh-btn" onclick="fetchAllData()" id="refreshBtn">Päivitä</button>
+        </h1>
+        <div class="last-update" id="lastUpdate">Ladataan...</div>
+    </header>
+
+    <main>
+        <section class="station-section" id="jarvenpaa-section">
+            <div class="station-header">
+                <span>Järvenpää</span>
+                <span class="direction">→ Helsinki</span>
+            </div>
+            <div class="train-list" id="jarvenpaa-trains">
+                <div class="loading">Ladataan...</div>
+            </div>
+        </section>
+
+        <section class="station-section" id="helsinki-section">
+            <div class="station-header">
+                <span>Helsinki</span>
+                <span class="direction">→ Riihimäki</span>
+            </div>
+            <div class="train-list" id="helsinki-trains">
+                <div class="loading">Ladataan...</div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const API_BASE = 'https://rata.digitraffic.fi/api/v1';
+
+        const STATIONS = {
+            JP: { name: 'Järvenpää', elementId: 'jarvenpaa-trains' },
+            HKI: { name: 'Helsinki', elementId: 'helsinki-trains' }
+        };
+
+        const STATION_NAMES = {
+            HKI: 'Helsinki',
+            JP: 'Järvenpää',
+            RI: 'Riihimäki',
+            TPE: 'Tampere',
+            TKU: 'Turku',
+            PSL: 'Pasila',
+            TKL: 'Tikkurila',
+            KÄP: 'Käpylä',
+            OLK: 'Oulunkylä',
+            PLA: 'Pukinmäki',
+            MLÄ: 'Malmi',
+            TAP: 'Tapanila',
+            POH: 'Puistola',
+            SAU: 'Saunakallio',
+            HPL: 'Hiekkaharju',
+            KRS: 'Koivukylä',
+            RKL: 'Rekola',
+            KVY: 'Korso',
+            SVL: 'Savela',
+            KH: 'Kerava',
+            AIN: 'Ainola',
+            SNJ: 'Saunakallio',
+            PRL: 'Purola',
+            JNS: 'Jokela',
+            HY: 'Hyvinkää',
+            RY: 'Ryttylä',
+            LP: 'Leppäkoski',
+            TU: 'Turenki'
+        };
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('fi-FI', {
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Europe/Helsinki'
+            });
+        }
+
+        function getDestinationName(code) {
+            return STATION_NAMES[code] || code;
+        }
+
+        function renderTrains(trains, stationCode, elementId) {
+            const container = document.getElementById(elementId);
+
+            if (!trains || trains.length === 0) {
+                container.innerHTML = '<div class="empty">Ei lähteviä R-junia</div>';
+                return;
+            }
+
+            const now = new Date();
+
+            // Filter R trains and get departures from this station
+            const departures = trains
+                .filter(train => train.commuterLineID === 'R' && !train.cancelled)
+                .map(train => {
+                    const departure = train.timeTableRows.find(
+                        row => row.stationShortCode === stationCode &&
+                               row.type === 'DEPARTURE' &&
+                               row.commercialStop
+                    );
+
+                    if (!departure) return null;
+
+                    const lastStop = train.timeTableRows[train.timeTableRows.length - 1];
+                    const destination = lastStop ? lastStop.stationShortCode : '?';
+
+                    return {
+                        trainNumber: train.trainNumber,
+                        scheduledTime: departure.scheduledTime,
+                        actualTime: departure.actualTime || departure.scheduledTime,
+                        delay: departure.differenceInMinutes || 0,
+                        track: departure.commercialTrack || '-',
+                        destination: destination,
+                        cancelled: departure.cancelled
+                    };
+                })
+                .filter(d => d !== null)
+                .filter(d => new Date(d.actualTime) > now) // Only future departures
+                .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime))
+                .slice(0, 8); // Show max 8 trains
+
+            if (departures.length === 0) {
+                container.innerHTML = '<div class="empty">Ei lähteviä R-junia</div>';
+                return;
+            }
+
+            container.innerHTML = departures.map(dep => {
+                const statusClass = dep.cancelled ? 'cancelled' : (dep.delay > 0 ? 'delayed' : 'on-time');
+                const statusText = dep.cancelled ? 'Peruttu' :
+                                   (dep.delay > 0 ? `+${dep.delay} min` : 'Ajallaan');
+
+                return `
+                    <div class="train-row">
+                        <div class="train-time">${formatTime(dep.scheduledTime)}</div>
+                        <div class="train-destination">${getDestinationName(dep.destination)}</div>
+                        <div class="train-status ${statusClass}">${statusText}</div>
+                        <div class="train-track">${dep.track}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function fetchStationData(stationCode) {
+            const url = `${API_BASE}/live-trains/station/${stationCode}?train_categories=Commuter`;
+
+            const response = await fetch(url, {
+                headers: {
+                    'Accept-Encoding': 'gzip'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return response.json();
+        }
+
+        async function fetchAllData() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.disabled = true;
+
+            try {
+                const [jpData, hkiData] = await Promise.all([
+                    fetchStationData('JP'),
+                    fetchStationData('HKI')
+                ]);
+
+                renderTrains(jpData, 'JP', 'jarvenpaa-trains');
+                renderTrains(hkiData, 'HKI', 'helsinki-trains');
+
+                document.getElementById('lastUpdate').textContent =
+                    `Päivitetty: ${new Date().toLocaleTimeString('fi-FI', { timeZone: 'Europe/Helsinki' })}`;
+
+            } catch (error) {
+                console.error('Error fetching train data:', error);
+                document.querySelectorAll('.train-list').forEach(el => {
+                    el.innerHTML = '<div class="error">Virhe ladattaessa tietoja. Yritä uudelleen.</div>';
+                });
+            } finally {
+                refreshBtn.disabled = false;
+            }
+        }
+
+        // Initial load
+        fetchAllData();
+
+        // Auto-refresh every 30 seconds
+        setInterval(fetchAllData, 30000);
+    </script>
+</body>
+</html>
