@@ -1,0 +1,14 @@
+services:
+  anki:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - anki-data:/data
+    environment:
+      DB_PATH: /data/anki.db
+      PORT: "8080"
+    restart: unless-stopped
+
+volumes:
+  anki-data:
