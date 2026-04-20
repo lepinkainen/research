@@ -1,0 +1,11 @@
+services:
+  irc-service:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      DB_PATH: /data/irc.db
+      ADDR: ":8080"
+    restart: unless-stopped
