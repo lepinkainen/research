@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/lepinkainen/research/irc-service/db"
+	"github.com/lepinkainen/research/irc-service/irc"
 )
 
 func main() {
@@ -24,6 +25,20 @@ func main() {
 	}
 	defer store.Close()
 	slog.Info("db ready", "path", cfg.DBPath)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	mgr := irc.NewManager(store)
+	if nets := seedNetworksFromEnv(); len(nets) > 0 {
+		if err := mgr.Start(ctx, nets); err != nil {
+			slog.Error("start irc manager", "err", err)
+			os.Exit(1)
+		}
+		slog.Info("irc networks started", "count", len(nets))
+	} else {
+		slog.Info("no networks configured; set IRC_NETWORK to connect one")
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -39,9 +54,6 @@ func main() {
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	go func() {
 		slog.Info("http listening", "addr", cfg.Addr)
@@ -59,4 +71,6 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("http shutdown", "err", err)
 	}
+	mgr.Wait()
+	slog.Info("bye")
 }

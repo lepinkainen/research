@@ -68,10 +68,10 @@ multiple clients (web, TUI, macOS) connect to over Tailscale.
 
 ## IRC library choice
 
-`github.com/ergochat/irc-go` — modern, IRCv3-aware, written by the Ergo
-maintainers. Alternative: `github.com/lrstanley/girc`. Decision deferred
-until we prototype both for an hour. Both support the caps we need; pick on
-ergonomics.
+`github.com/lrstanley/girc` — widely used, actively maintained, supports
+the IRCv3 caps we need (message-tags, labeled-response, batch, SASL,
+chathistory). We use its `Handlers.Add(event, handler)` model for event
+routing and its `Send`/`Cmd` helpers for outbound messages.
 
 ### IRCv3 capabilities to negotiate
 
@@ -291,7 +291,6 @@ Stop after M5 for v1; M6 is a nice-to-have.
 
 ## Open questions
 
-- Library: `ergochat/irc-go` vs `lrstanley/girc`. Spike both before M2.
 - Config format: YAML on disk vs network rows in SQLite. Likely
   SQLite-only (mutate via API), with a `--seed` flag for first run.
 - Do we ever want to run a TLS reverse proxy in front? Probably not while
