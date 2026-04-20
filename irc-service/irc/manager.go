@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/lrstanley/girc"
 
 	ircdb "github.com/lepinkainen/research/irc-service/db"
+	"github.com/lepinkainen/research/irc-service/hub"
 )
 
 // debugWriter returns os.Stderr when IRC_DEBUG is set, io.Discard otherwise.
@@ -44,14 +46,17 @@ type NetworkConfig struct {
 // Manager owns one IRC client per network.
 type Manager struct {
 	db   *sql.DB
+	hub  *hub.Hub
 	wg   sync.WaitGroup
 	mu   sync.Mutex
-	conn map[string]*girc.Client
+	conn map[int64]*girc.Client // keyed by network id so the API can find a send target
 }
 
-// NewManager returns a Manager backed by the given database.
-func NewManager(d *sql.DB) *Manager {
-	return &Manager{db: d, conn: map[string]*girc.Client{}}
+// NewManager returns a Manager backed by the given database. If h is
+// non-nil, inbound events are also published to it for fan-out to API
+// consumers; pass nil in tests that don't care about broadcasts.
+func NewManager(d *sql.DB, h *hub.Hub) *Manager {
+	return &Manager{db: d, hub: h, conn: map[int64]*girc.Client{}}
 }
 
 // Start launches a goroutine per network that keeps the connection alive
@@ -80,6 +85,48 @@ func (m *Manager) Start(ctx context.Context, nets []NetworkConfig) error {
 // Wait blocks until every network goroutine has exited.
 func (m *Manager) Wait() { m.wg.Wait() }
 
+// ErrNotConnected indicates there's no live IRC connection for the given
+// network id. Callers should surface this as a client-visible error.
+var ErrNotConnected = errors.New("irc: network not connected")
+
+// Send writes an IRC PRIVMSG to target on the given network. When
+// echo-message is negotiated, the server's echo will trigger our normal
+// persistence path — no local insert here.
+func (m *Manager) Send(networkID int64, target, content string) error {
+	m.mu.Lock()
+	c := m.conn[networkID]
+	m.mu.Unlock()
+	if c == nil || !c.IsConnected() {
+		return ErrNotConnected
+	}
+	c.Cmd.Message(target, content)
+	return nil
+}
+
+// Join sends a JOIN for channel on the given network.
+func (m *Manager) Join(networkID int64, channel string) error {
+	m.mu.Lock()
+	c := m.conn[networkID]
+	m.mu.Unlock()
+	if c == nil || !c.IsConnected() {
+		return ErrNotConnected
+	}
+	c.Cmd.Join(channel)
+	return nil
+}
+
+// Part sends a PART for channel on the given network with an optional reason.
+func (m *Manager) Part(networkID int64, channel, reason string) error {
+	m.mu.Lock()
+	c := m.conn[networkID]
+	m.mu.Unlock()
+	if c == nil || !c.IsConnected() {
+		return ErrNotConnected
+	}
+	c.Cmd.Part(channel, reason)
+	return nil
+}
+
 // runNetwork keeps a single network connected, with exponential backoff
 // on transient connect errors. It exits cleanly when ctx is cancelled.
 func (m *Manager) runNetwork(ctx context.Context, networkID int64, nc NetworkConfig) {
@@ -96,14 +143,14 @@ func (m *Manager) runNetwork(ctx context.Context, networkID int64, nc NetworkCon
 		client := m.buildClient(ctx, networkID, nc)
 
 		m.mu.Lock()
-		m.conn[nc.Name] = client
+		m.conn[networkID] = client
 		m.mu.Unlock()
 
 		log.Info("connecting", "host", nc.Host, "port", nc.Port, "tls", nc.TLS)
 		err := client.Connect()
 
 		m.mu.Lock()
-		delete(m.conn, nc.Name)
+		delete(m.conn, networkID)
 		m.mu.Unlock()
 
 		if ctx.Err() != nil {
@@ -164,7 +211,7 @@ func (m *Manager) buildClient(ctx context.Context, networkID int64, nc NetworkCo
 	}
 
 	client := girc.New(cfg)
-	h := &handler{db: m.db, networkID: networkID, networkName: nc.Name, autojoin: nc.Channels}
+	h := &handler{db: m.db, hub: m.hub, networkID: networkID, networkName: nc.Name, autojoin: nc.Channels}
 	h.register(client)
 
 	// Close the client when the parent context is cancelled. This unblocks

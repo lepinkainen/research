@@ -143,7 +143,7 @@ func TestManagerPersistsMessages(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mgr := NewManager(store)
+	mgr := NewManager(store, nil)
 	err = mgr.Start(ctx, []NetworkConfig{{
 		Name:     "fake",
 		Host:     host,
@@ -215,7 +215,7 @@ func TestMsgIDDedupAndServerTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mgr := NewManager(store)
+	mgr := NewManager(store, nil)
 	err = mgr.Start(ctx, []NetworkConfig{{
 		Name: "fake", Host: host, Port: port, TLS: false,
 		Nick: "tester", User: "tester", Realname: "tester",

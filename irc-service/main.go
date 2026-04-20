@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"embed"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,9 +12,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/lepinkainen/research/irc-service/api"
 	"github.com/lepinkainen/research/irc-service/db"
+	"github.com/lepinkainen/research/irc-service/hub"
 	"github.com/lepinkainen/research/irc-service/irc"
 )
+
+//go:embed web
+var webFS embed.FS
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
@@ -29,7 +36,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	mgr := irc.NewManager(store)
+	evHub := hub.New()
+	mgr := irc.NewManager(store, evHub)
 	if nets := seedNetworksFromEnv(); len(nets) > 0 {
 		if err := mgr.Start(ctx, nets); err != nil {
 			slog.Error("start irc manager", "err", err)
@@ -40,18 +48,22 @@ func main() {
 		slog.Info("no networks configured; set IRC_NETWORK to connect one")
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if err := store.PingContext(r.Context()); err != nil {
-			http.Error(w, "db unreachable", http.StatusServiceUnavailable)
-			return
-		}
-		w.Write([]byte("ok"))
-	})
+	webSub, err := fs.Sub(webFS, "web")
+	if err != nil {
+		slog.Error("web fs sub", "err", err)
+		os.Exit(1)
+	}
+
+	apiSrv := &api.Server{
+		DB:      store,
+		Hub:     evHub,
+		Manager: mgr,
+		Web:     webSub,
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           mux,
+		Handler:           apiSrv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -9,12 +9,48 @@ import (
 	"github.com/lrstanley/girc"
 
 	ircdb "github.com/lepinkainen/research/irc-service/db"
+	"github.com/lepinkainen/research/irc-service/hub"
 )
+
+// MessageEvent is published after a message row is successfully written.
+// The JSON tags match the wire shape sent to WebSocket clients.
+type MessageEvent struct {
+	Type      string `json:"type"`
+	ID        int64  `json:"id"`
+	NetworkID int64  `json:"network_id"`
+	BufferID  int64  `json:"buffer_id"`
+	MsgID     string `json:"msgid,omitempty"`
+	TS        string `json:"ts"`
+	Sender    string `json:"sender"`
+	Account   string `json:"account,omitempty"`
+	Kind      string `json:"kind"`
+	Target    string `json:"target,omitempty"`
+	Content   string `json:"content"`
+}
+
+// BufferCreatedEvent is published the first time we see activity in a
+// buffer that didn't exist yet (autojoin, inbound PM, network status).
+type BufferCreatedEvent struct {
+	Type      string `json:"type"`
+	ID        int64  `json:"id"`
+	NetworkID int64  `json:"network_id"`
+	Name      string `json:"name"`
+	Kind      string `json:"kind"`
+	CreatedAt string `json:"created_at"`
+}
+
+// NetworkStateEvent announces connection state transitions.
+type NetworkStateEvent struct {
+	Type      string `json:"type"`
+	NetworkID int64  `json:"network_id"`
+	State     string `json:"state"` // "connected" | "disconnected"
+}
 
 // handler is the glue between a girc.Client and the SQLite store. One
 // instance per network connection.
 type handler struct {
 	db          *sql.DB
+	hub         *hub.Hub
 	networkID   int64
 	networkName string
 	autojoin    []string
@@ -147,7 +183,8 @@ func (h *handler) onNick(_ *girc.Client, e girc.Event) {
 // --- helpers ---
 
 // storeEvent is the single funnel for inbound IRC events. It upserts the
-// target buffer, writes a messages row, and logs on failure.
+// target buffer, writes a messages row, and publishes hub events so
+// WebSocket clients can render in real time.
 func (h *handler) storeEvent(e girc.Event, bufName, bufKind, kind, target, content string) {
 	sender := ""
 	if e.Source != nil {
@@ -164,12 +201,22 @@ func (h *handler) storeEvent(e girc.Event, bufName, bufKind, kind, target, conte
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	bufID, err := ircdb.UpsertBuffer(ctx, h.db, h.networkID, bufName, bufKind)
+	bufID, created, buf, err := ircdb.UpsertBuffer(ctx, h.db, h.networkID, bufName, bufKind)
 	if err != nil {
 		slog.Error("upsert buffer", "err", err, "network", h.networkName, "buffer", bufName)
 		return
 	}
-	if err := ircdb.InsertMessage(ctx, h.db, ircdb.Message{
+	if created && h.hub != nil {
+		h.hub.Publish(&BufferCreatedEvent{
+			Type:      "buffer_created",
+			ID:        buf.ID,
+			NetworkID: buf.NetworkID,
+			Name:      buf.Name,
+			Kind:      buf.Kind,
+			CreatedAt: buf.CreatedAt,
+		})
+	}
+	id, storedTS, inserted, err := ircdb.InsertMessage(ctx, h.db, ircdb.Message{
 		NetworkID: h.networkID,
 		BufferID:  bufID,
 		MsgID:     msgID,
@@ -180,22 +227,46 @@ func (h *handler) storeEvent(e girc.Event, bufName, bufKind, kind, target, conte
 		Target:    target,
 		Content:   content,
 		Raw:       raw,
-	}); err != nil {
+	})
+	if err != nil {
 		slog.Error("insert message", "err", err, "network", h.networkName, "kind", kind)
+		return
 	}
+	if !inserted || h.hub == nil {
+		return
+	}
+	h.hub.Publish(&MessageEvent{
+		Type:      "message",
+		ID:        id,
+		NetworkID: h.networkID,
+		BufferID:  bufID,
+		MsgID:     msgID,
+		TS:        storedTS,
+		Sender:    sender,
+		Account:   account,
+		Kind:      kind,
+		Target:    target,
+		Content:   content,
+	})
 }
 
 // logStatus writes a synthetic message (connect/disconnect) to the
-// per-network status buffer.
+// per-network status buffer and publishes state/message events.
 func (h *handler) logStatus(kind, content string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	bufID, err := ircdb.UpsertBuffer(ctx, h.db, h.networkID, "", ircdb.BufferStatus)
+	bufID, created, buf, err := ircdb.UpsertBuffer(ctx, h.db, h.networkID, "", ircdb.BufferStatus)
 	if err != nil {
 		slog.Error("upsert status buffer", "err", err, "network", h.networkName)
 		return
 	}
-	_ = ircdb.InsertMessage(ctx, h.db, ircdb.Message{
+	if created && h.hub != nil {
+		h.hub.Publish(&BufferCreatedEvent{
+			Type: "buffer_created", ID: buf.ID, NetworkID: buf.NetworkID,
+			Name: buf.Name, Kind: buf.Kind, CreatedAt: buf.CreatedAt,
+		})
+	}
+	id, ts, inserted, err := ircdb.InsertMessage(ctx, h.db, ircdb.Message{
 		NetworkID: h.networkID,
 		BufferID:  bufID,
 		Timestamp: time.Now(),
@@ -204,6 +275,17 @@ func (h *handler) logStatus(kind, content string) {
 		Content:   content,
 		Raw:       "",
 	})
+	if err == nil && inserted && h.hub != nil {
+		h.hub.Publish(&MessageEvent{
+			Type: "message", ID: id, NetworkID: h.networkID, BufferID: bufID,
+			TS: ts, Sender: "*", Kind: kind, Content: content,
+		})
+	}
+	if h.hub != nil && (kind == "connected" || kind == "disconnected") {
+		h.hub.Publish(&NetworkStateEvent{
+			Type: "network_state", NetworkID: h.networkID, State: kind,
+		})
+	}
 }
 
 func joinRemaining(parts []string) string {
