@@ -37,6 +37,8 @@ type NetworkConfig struct {
 	User     string   // ident
 	Realname string   // realname / gecos
 	Channels []string // channels to autojoin after connect
+	SASLUser string   // empty disables SASL
+	SASLPass string
 }
 
 // Manager owns one IRC client per network.
@@ -63,6 +65,8 @@ func (m *Manager) Start(ctx context.Context, nets []NetworkConfig) error {
 			TLS:      nc.TLS,
 			Nick:     nc.Nick,
 			Realname: nc.Realname,
+			SASLUser: nc.SASLUser,
+			SASLPass: nc.SASLPass,
 		})
 		if err != nil {
 			return err
@@ -141,9 +145,22 @@ func (m *Manager) buildClient(ctx context.Context, networkID int64, nc NetworkCo
 		PingTimeout: 30 * time.Second,
 		RecoverFunc: girc.DefaultRecoverHandler,
 		Debug:       debugWriter(),
+		// girc auto-negotiates server-time, message-tags, msgid, batch,
+		// account-tag/notify, extended-join, multi-prefix, userhost-in-names,
+		// away-notify, chghost, invite-notify. We opt in to the caps that
+		// need explicit consent: echoing our own outbound messages back (so
+		// we can persist them with server-assigned msgid + server-time) and
+		// labeled replies for matching echoes to pending sends.
+		SupportedCaps: map[string][]string{
+			"echo-message":     nil,
+			"labeled-response": nil,
+		},
 	}
 	if nc.TLS {
 		cfg.TLSConfig = &tls.Config{ServerName: nc.Host, MinVersion: tls.VersionTLS12}
+	}
+	if nc.SASLUser != "" {
+		cfg.SASL = &girc.SASLPlain{User: nc.SASLUser, Pass: nc.SASLPass}
 	}
 
 	client := girc.New(cfg)

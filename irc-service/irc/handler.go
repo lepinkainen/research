@@ -32,6 +32,17 @@ func (h *handler) register(c *girc.Client) {
 	c.Handlers.Add(girc.QUIT, h.onQuit)
 	c.Handlers.Add(girc.NICK, h.onNick)
 	c.Handlers.Add(girc.MODE, h.onMode)
+	// echo-message: girc routes our own PRIVMSG/NOTICE echoes only through
+	// ALL_EVENTS. Catch them here and feed the normal persistence path so
+	// outbound messages land in history with the server-assigned msgid.
+	c.Handlers.Add(girc.ALL_EVENTS, func(c *girc.Client, e girc.Event) {
+		if !e.Echo {
+			return
+		}
+		if e.Command == girc.PRIVMSG || e.Command == girc.NOTICE {
+			h.onPrivmsg(c, e)
+		}
+	})
 }
 
 // --- event handlers ---

@@ -5,12 +5,14 @@ the full architecture.
 
 ## Status
 
-Milestone **M2 — IRC connect**: a single IRC connection driven by
-[lrstanley/girc](https://github.com/lrstanley/girc), auto-reconnect with
-exponential backoff, persistent logging of PRIVMSG/NOTICE/ACTION, JOIN,
-PART, KICK, TOPIC, MODE, QUIT, NICK into SQLite. Status buffer per
-network for connect/disconnect and network-level events. No IRCv3 caps
-yet (M3) and no client API yet (M4).
+Milestone **M3 — IRCv3 caps**: SASL PLAIN, auto-negotiated server-time /
+message-tags / msgid / batch / account-tag / extended-join / multi-prefix /
+away-notify / chghost / invite-notify, and opt-in echo-message +
+labeled-response. Inbound messages are stored with the server-supplied
+timestamp when available and deduplicated by `(network_id, msgid)` via a
+partial unique index. Self-sent echoes are routed through the same
+persistence path so M4's outbound API lands history rows automatically.
+No client API yet (M4).
 
 ## Run locally
 
@@ -50,6 +52,8 @@ Environment variables:
 | `IRC_USER`     | = nick          | Ident                                                   |
 | `IRC_NAME`     | = nick          | Realname / gecos                                        |
 | `IRC_CHANNELS` | *(empty)*       | Comma-separated channels to autojoin                    |
+| `IRC_SASL_USER`| *(empty)*       | If set, authenticate with SASL PLAIN                    |
+| `IRC_SASL_PASS`| *(empty)*       | SASL PLAIN password                                     |
 | `IRC_DEBUG`    | *(empty)*       | If set, dump raw IRC traffic to stderr                  |
 
 A single network via env vars is a temporary seed. Network CRUD through

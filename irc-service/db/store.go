@@ -28,6 +28,8 @@ type Network struct {
 	TLS      bool
 	Nick     string
 	Realname string
+	SASLUser string
+	SASLPass string
 }
 
 // UpsertNetwork inserts the network if missing (keyed by name) and returns
@@ -48,10 +50,15 @@ func UpsertNetwork(ctx context.Context, d *sql.DB, n Network) (Network, error) {
 	if n.TLS {
 		tls = 1
 	}
+	var saslUser, saslPass any
+	if n.SASLUser != "" {
+		saslUser = n.SASLUser
+		saslPass = n.SASLPass
+	}
 	res, err := d.ExecContext(ctx,
-		`INSERT INTO networks(name, host, port, tls, nick, realname, autoconnect, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
-		n.Name, n.Host, n.Port, tls, n.Nick, n.Realname, Now())
+		`INSERT INTO networks(name, host, port, tls, nick, realname, sasl_user, sasl_pass, autoconnect, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+		n.Name, n.Host, n.Port, tls, n.Nick, n.Realname, saslUser, saslPass, Now())
 	if err != nil {
 		return Network{}, err
 	}

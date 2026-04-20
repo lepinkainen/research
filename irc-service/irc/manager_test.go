@@ -16,14 +16,15 @@ import (
 
 // fakeIRCServer is a minimal ircd that accepts one client, completes the
 // USER/NICK handshake, and then lets tests drive the conversation by
-// calling Send.
+// calling Send. The advertised caps are controlled by the `caps` field.
 type fakeIRCServer struct {
-	t    *testing.T
-	ln   net.Listener
-	conn net.Conn
-	rd   *bufio.Reader
-	wr   *bufio.Writer
+	t     *testing.T
+	ln    net.Listener
+	conn  net.Conn
+	rd    *bufio.Reader
+	wr    *bufio.Writer
 	ready chan struct{}
+	caps  string // space-separated caps to advertise in CAP LS
 }
 
 func newFakeIRC(t *testing.T) *fakeIRCServer {
@@ -62,10 +63,16 @@ func (s *fakeIRCServer) loop() {
 		line = strings.TrimRight(line, "\r\n")
 		switch {
 		case strings.HasPrefix(line, "CAP LS"):
-			// Announce no caps so girc skips request phase and sends CAP END.
-			s.send(":fake CAP * LS :")
+			s.send(":fake CAP * LS :%s", s.caps)
 		case strings.HasPrefix(line, "CAP REQ"):
-			s.send(":fake CAP * NAK :")
+			// ACK everything the client asked for. The payload starts
+			// after the trailing ':'.
+			reqIdx := strings.Index(line, ":")
+			req := ""
+			if reqIdx >= 0 {
+				req = line[reqIdx+1:]
+			}
+			s.send(":fake CAP * ACK :%s", req)
 		case strings.HasPrefix(line, "CAP END"):
 			// nothing to do
 		case strings.HasPrefix(line, "NICK "):
@@ -109,6 +116,12 @@ func (s *fakeIRCServer) injectPrivmsg(channel, from, text string) {
 	s.send(":%s!~u@h PRIVMSG %s :%s", from, channel, text)
 }
 
+// injectTaggedPrivmsg sends a PRIVMSG with IRCv3 message-tags prefix.
+// tags should be the `key=value;...` payload, without the leading '@'.
+func (s *fakeIRCServer) injectTaggedPrivmsg(tags, channel, from, text string) {
+	s.send("@%s :%s!~u@h PRIVMSG %s :%s", tags, from, channel, text)
+}
+
 func (s *fakeIRCServer) close() { s.ln.Close(); if s.conn != nil { s.conn.Close() } }
 
 // TestManagerPersistsMessages spins up a fake ircd, runs the manager
@@ -124,6 +137,7 @@ func TestManagerPersistsMessages(t *testing.T) {
 
 	srv := newFakeIRC(t)
 	defer srv.close()
+	// no caps advertised for the basic test
 	host, port := srv.addr()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -175,6 +189,95 @@ func TestManagerPersistsMessages(t *testing.T) {
 	).Scan(&hit)
 	if err != nil || !strings.Contains(hit, "hello from fake") {
 		t.Fatalf("fts hit = %q, err = %v", hit, err)
+	}
+
+	cancel()
+	mgr.Wait()
+}
+
+// TestMsgIDDedupAndServerTime verifies that when the server advertises
+// message-tags + server-time + msgid, a tagged PRIVMSG is stored with the
+// server-supplied timestamp and a repeated msgid is rejected by the
+// partial unique index (INSERT OR IGNORE path in InsertMessage).
+func TestMsgIDDedupAndServerTime(t *testing.T) {
+	dir := t.TempDir()
+	store, err := db.Open(filepath.Join(dir, "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	srv := newFakeIRC(t)
+	srv.caps = "message-tags server-time msgid batch"
+	defer srv.close()
+	host, port := srv.addr()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mgr := NewManager(store)
+	err = mgr.Start(ctx, []NetworkConfig{{
+		Name: "fake", Host: host, Port: port, TLS: false,
+		Nick: "tester", User: "tester", Realname: "tester",
+		Channels: []string{"#test"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-srv.ready:
+	case <-time.After(3 * time.Second):
+		t.Fatal("server never saw registration")
+	}
+	waitFor(t, 5*time.Second, func() bool {
+		var n int
+		store.QueryRow(`SELECT COUNT(*) FROM buffers WHERE name='#test'`).Scan(&n)
+		return n == 1
+	}, "join never landed")
+
+	const msgid = "mid-42"
+	const serverTime = "2025-01-02T03:04:05.678Z"
+	tags := "time=" + serverTime + ";msgid=" + msgid
+	srv.injectTaggedPrivmsg(tags, "#test", "alice", "once")
+
+	waitFor(t, 5*time.Second, func() bool {
+		var n int
+		store.QueryRow(
+			`SELECT COUNT(*) FROM messages WHERE msgid=?`, msgid,
+		).Scan(&n)
+		return n == 1
+	}, "tagged privmsg never landed")
+
+	// Replaying the exact same tagged line must not create a second row.
+	srv.injectTaggedPrivmsg(tags, "#test", "alice", "once")
+	time.Sleep(250 * time.Millisecond)
+
+	var count int
+	if err := store.QueryRow(
+		`SELECT COUNT(*) FROM messages WHERE msgid=?`, msgid,
+	).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected dedup via msgid, got %d rows", count)
+	}
+
+	// The stored ts must come from the tag, not local receive time.
+	var gotTS string
+	if err := store.QueryRow(
+		`SELECT ts FROM messages WHERE msgid=?`, msgid,
+	).Scan(&gotTS); err != nil {
+		t.Fatal(err)
+	}
+	// Formatter may pad/truncate fractional seconds; compare the instant.
+	gotParsed, err := time.Parse("2006-01-02T15:04:05.000Z", gotTS)
+	if err != nil {
+		t.Fatalf("unparseable ts %q: %v", gotTS, err)
+	}
+	want, _ := time.Parse(time.RFC3339Nano, serverTime)
+	if !gotParsed.Equal(want) {
+		t.Fatalf("ts mismatch: got %s, want %s", gotParsed, want)
 	}
 
 	cancel()

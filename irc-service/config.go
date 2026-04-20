@@ -41,6 +41,8 @@ func seedNetworksFromEnv() []irc.NetworkConfig {
 		User:     envOr("IRC_USER", nick),
 		Realname: envOr("IRC_NAME", nick),
 		Channels: channels,
+		SASLUser: os.Getenv("IRC_SASL_USER"),
+		SASLPass: os.Getenv("IRC_SASL_PASS"),
 	}}
 }
 
